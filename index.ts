@@ -38,7 +38,7 @@ app.post('/webhook', (req, res) => {
 
     if (data.object) {
         data.entry.forEach(entry => {
-            console.log(entry);
+            //console.log(entry);
              entry.changes.forEach(change => {
                
                 const messages = change.value.messages;
@@ -69,11 +69,11 @@ app.post('/webhook', (req, res) => {
 
 async function sendMessage(to, text) {
     const url = `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/messages`;
-    console.log(to)
+    //console.log(to)
     // Formatando o número do destinatário se necessário
     // Certifique-se que o número esteja no formato internacional, sem + ou espaços
     const formattedTo = to.replace(/\D/g, '');
-    console.log(`meu numero é: ${to} e mei tipo: ${typeof to} ${typeof 5581995362886}`)
+    //console.log(`meu numero é: ${to} e mei tipo: ${typeof to} ${typeof 5581995362886}`)
     
     const data = {
       messaging_product: "whatsapp",
