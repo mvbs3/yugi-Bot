@@ -6,6 +6,10 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+    console.log(`➡️  ${req.method} ${req.url}`);
+    next(); // Continua para o próximo middleware/rota
+});
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN!;
 const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN!;
@@ -25,22 +29,30 @@ app.get("/webhook", (req, res) => {
     }
 });
 
-// 📌 Webhook para receber mensagens do WhatsApp
-app.post("/webhook", async (req, res) => {
-    const body = req.body;
+app.get("/", (req, res) => {
+    res.send("Hello, World!");
+})
 
-    if (body.object) {
-        const entry = body.entry?.[0]?.changes?.[0]?.value;
-        if (entry && entry.messages) {
-            const message = entry.messages[0];
-            const sender = message.from;
-            const text = message.text?.body;
+app.post('/webhook', (req, res) => {
+    const data = req.body;
 
-            console.log(`Mensagem recebida de ${sender}: ${text}`);
+    if (data.object) {
+        data.entry.forEach(entry => {
+            console.log(entry);
+             entry.changes.forEach(change => {
+               
+                const messages = change.value.messages;
+                if (messages){
+                    messages.forEach(message => {
+                        const senderId = message.from;
+                        const messageText = message.text.body;
+                        console.log(`Mensagem recebida de ${senderId}: ${messageText}`);
+                        sendMessage(senderId, `Obrigado por sua mensagem! 😊${messageText}`);
+                    })
+                } 
+             });
+        });
 
-            await sendMessage(sender, "Olá! Sou um bot profissional no WhatsApp 🚀");
-
-        }
         res.sendStatus(200);
     } else {
         res.sendStatus(404);
@@ -48,26 +60,61 @@ app.post("/webhook", async (req, res) => {
 });
 
 // 📌 Função para enviar mensagem no WhatsApp
-async function sendMessage(to: string, message: string) {
-    await axios.post(
-        `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
-        {
-            messaging_product: "whatsapp",
-            to: to,
-            text: { body: message }
-        },
-        {
-            headers: {
-                Authorization: `Bearer ${ACCESS_TOKEN}`,
-                "Content-Type": "application/json"
-            }
-        }
-    );
-}
 
+// curl -i -X POST `
+//   https://graph.facebook.com/v22.0/543100915558553/messages `
+//   -H 'Authorization: Bearer <access token>' `
+//   -H 'Content-Type: application/json' `
+//   -d '{ \"messaging_product\": \"whatsapp\", \"to\": \"\", \"type\": \"template\", \"template\": { \"name\": \"hello_world\", \"language\": { \"code\": \"en_US\" } } }'
+
+async function sendMessage(to, text) {
+    const url = `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/messages`;
+    console.log(to)
+    // Formatando o número do destinatário se necessário
+    // Certifique-se que o número esteja no formato internacional, sem + ou espaços
+    const formattedTo = to.replace(/\D/g, '');
+    console.log(`meu numero é: ${to} e mei tipo: ${typeof to} ${typeof 5581995362886}`)
+    
+    const data = {
+      messaging_product: "whatsapp",
+      to: to,
+      type: "text",
+      text: { body: text }
+    };
+    
+    const config = {
+      headers: {
+        "Authorization": `Bearer ${ACCESS_TOKEN}`,
+        "Content-Type": "application/json"
+      }
+    };
+    
+    try {
+      const response = await axios.post(url, data, config);
+      console.log("Mensagem enviada com sucesso:", response.data);
+      return response.data;
+    } catch (error) {
+      // Log detalhado do erro
+      if (error.response) {
+        // A requisição foi feita e o servidor respondeu com um status fora do intervalo 2xx
+        console.error("Erro na resposta do servidor:", {
+          status: error.response.status,
+          data: error.response.data
+        });
+      } else if (error.request) {
+        // A requisição foi feita mas não houve resposta
+        console.error("Sem resposta do servidor:", error.request);
+      } else {
+        // Algo aconteceu na configuração da requisição que causou o erro
+        console.error("Erro na configuração da requisição:", error.message);
+      }
+      throw error;
+    }
+  }
 // 📌 Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
 });
             
+
